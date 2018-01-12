@@ -2,12 +2,29 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import registerServiceWorker from './registerServiceWorker';
+import Cookie from 'js-cookie';
+
+class Task extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    return (
+      <div className="currentTask">
+        <h2>
+          {this.props.name}
+        </h2>
+      </div>  )
+  }
+}
 
 class View extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       tasks: [],
+      premade: (typeof Cookie.getJSON('todo') !== 'undefined')
     };
     this.keyboardListener = this.keyboardListener.bind(this);
   }
@@ -16,9 +33,7 @@ class View extends React.Component {
     return (
       <div className="view">
         <div className="currentTask">
-          <h2>
-            {this.getCurrentTask()}
-          </h2>
+          <Task name={this.getCurrentTask()}/>
         </div>
         <div className="newTask">
           <input ref="newTaskNameInput" type="text" className="newTaskName"
@@ -61,7 +76,9 @@ class View extends React.Component {
     // Currently don't handle empty inputs.
     newTasks.push(this.state.newTaskName);
     // Clear out the name.
-    this.state.newTaskName = '';
+    this.setState({
+      newTaskName: ''
+    });
     this.setState({tasks: newTasks});
   }
 
