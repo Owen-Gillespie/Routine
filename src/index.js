@@ -34,18 +34,51 @@ class Task extends React.Component {
   }
 }
 
-class RoutineMaker extends React.Component {
+class TaskTextBox extends React.Component {
   constructor(props) {
-    super(props);
+    super(props)
     this.state = {
       newTaskName : ""
     }
     this.onKeyPress = this.onKeyPress.bind(this)
   }
 
+  onKeyPress(e) {
+    if (e.key === "Enter")
+    {
+      this.props.addTask(this.state.newTaskName, this.props.timeName);
+      this.setState({newTaskName: ""});
+
+    }
+  }
+
+  render(){
+    return (
+      <input ref="newTaskNameInput" type="text" className="newTaskName"
+        value={this.state.newTaskName}
+        onChange={evt => this.setState({newTaskName: evt.target.value})}
+        onKeyPress={this.onKeyPress}/>
+    )
+  }
+
+}
+
+class RoutineMaker extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      newTaskName : ""
+    }
+    this.addTask = this.addTask.bind(this)
+  }
+
+  addTask(taskName, timeName) {
+    this.props.addTask(taskName, timeName);
+  }
+
   render() {
     let message;
-    if (this.props.tasks.length > 0) {
+    if (this.props.morningTasks.length > 0) {
       message = "Enter your routine and save it when you're done";
     } else {
       message = "To make a routine, type a task and then hit enter or the add button. Press save when you are done";
@@ -55,24 +88,21 @@ class RoutineMaker extends React.Component {
         <p>
           {message}
         </p>
-        <StringList strings = {this.props.tasks} />
-        <input ref="newTaskNameInput" type="text" className="newTaskName"
-               value={this.state.newTaskName}
-               onChange={evt => this.setState({newTaskName: evt.target.value})}
-               onKeyPress={this.onKeyPress}/>
-        <button onClick={evt => {this.props.addTask(this.state.newTaskName); this.setState({newTaskName: ""})}}> Add </button>
-        <button onClick={evt => this.props.save()}> Save </button>
+        <h2>
+          {"Morning Tasks"}
+        </h2>
+        <StringList strings = {this.props.morningTasks} />
+        <TaskTextBox addTask={this.addTask} timeName={"morning"}/>
+        <h2>
+          {"Evening Tasks"}
+        </h2>
+        <StringList strings = {this.props.eveningTasks} />
+        <TaskTextBox addTask={this.addTask} timeName={"evening"}/>
+        <br/>
+        <button onClick={evt => this.props.save()}> Save and Use </button>
       </div>
 
       )
-  }
-  onKeyPress(e) {
-    if (e.key === "Enter")
-    {
-      this.props.addTask(this.state.newTaskName);
-      this.setState({newTaskName: ""});
-
-    }
   }
 }
 
@@ -89,17 +119,24 @@ class RoutineViewer extends React.Component {
     return (
       <div className="view">
         <Task name={this.getCurrentTask()}/>
-        <button onClick={evt => this.props.deleteTasks()}> Delete Routine </button>
+        <button onClick={evt => this.props.editTasks()}> Edit Routine </button>
       </div>
     );
   }
   
   getCurrentTask() {
-    if (this.props.tasks.length !== 0) {
-      if (this.state.index >= this.props.tasks.length) {
+    let taskList;
+    if (new Date().getHours() < 15) {
+      taskList = this.props.morningTasks;
+      console.log(this.props.morningTasks)
+    } else {
+      taskList = this.props.eveningTasks;
+    }
+    if (taskList.length !== 0) {
+      if (this.state.index >= taskList.length) {
         return "Done!"
       } else {
-        return this.props.tasks[this.state.index];
+        return taskList[this.state.index];
       }
     } else {
       return "Add a task to get started.";
@@ -127,7 +164,6 @@ class RoutineViewer extends React.Component {
           break;
         // Nothing to do here.
         default:
-          console.log(event.key)
           break;
       }
     }
@@ -143,15 +179,18 @@ class View extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      tasks: [],
-      premade: (typeof Cookie.getJSON('todo') !== 'undefined')
+      morningTasks: [],
+      eveningTasks: [],
+      premade: (typeof Cookie.getJSON('tasks') !== 'undefined')
     };
-    if (this.state.premade) { // TODO: Determine why we aren't loading saved state correctly
-      this.state.tasks = Cookie.getJSON('todo');
+    if (this.state.premade) {
+      let tasks = Cookie.getJSON('tasks');
+      this.state.morningTasks = tasks['morningTasks'];
+      this.state.eveningTasks = tasks['eveningTasks'];
     }
     this.addNewTask = this.addNewTask.bind(this);
     this.save = this.save.bind(this);
-    this.deleteTasks = this.deleteTasks.bind(this);
+    this.editTasks = this.editTasks.bind(this);
   }
   
   render() {
@@ -159,36 +198,52 @@ class View extends React.Component {
       {
         return (
           <DocumentTitle title='Routine'>
-            <RoutineViewer tasks={this.state.tasks} deleteTasks={this.deleteTasks}/>
+            <RoutineViewer morningTasks={this.state.morningTasks}
+              eveningTasks={this.state.eveningTasks}
+              editTasks={this.editTasks}/>
           </DocumentTitle>
         );
       } else {
         return (
           <DocumentTitle title='Routine'>
-            <RoutineMaker tasks={this.state.tasks} addTask={this.addNewTask} save={this.save}/>
+            <RoutineMaker morningTasks={this.state.morningTasks}
+              eveningTasks={this.state.eveningTasks}
+              addTask={this.addNewTask}
+              save={this.save}/>
           </DocumentTitle>
         );
       }
   }
 
   save() {
-    Cookie.set('todo', this.state.tasks)
+    let dict = {
+      "morningTasks" : this.state.morningTasks,
+      "eveningTasks" : this.state.eveningTasks
+    }
+    Cookie.set('tasks', dict)
     this.setState({premade: true})
   }
 
-  deleteTasks() {
-    Cookie.remove('todo')
-    this.setState({premade: false, tasks: []})
+  editTasks() {
+    this.setState({premade: false})
   }
 
-  addNewTask(taskName) {
-    let newTasks = this.state.tasks;
-    // Currently don't handle empty inputs.
-    newTasks.push(taskName);
-    // Clear out the name.
-    // this.setState({
-    //   newTaskName: ''
-    this.setState({tasks: newTasks});
+  deleteTasks() {
+    Cookie.remove('tasks')
+  }
+
+  addNewTask(taskName, timeName) {
+    if (timeName === "morning")
+    {
+      let newTasks = this.state.morningTasks;
+      newTasks.push(taskName);
+      this.setState({morningTasks: newTasks});
+    } else {
+      let newTasks = this.state.eveningTasks;
+      newTasks.push(taskName);
+      this.setState({eveningTasks: newTasks});
+    }
+    
   };
 }
 
