@@ -99,7 +99,9 @@ class RoutineMaker extends React.Component {
         <StringList strings = {this.props.eveningTasks} />
         <TaskTextBox addTask={this.addTask} timeName={"evening"}/>
         <br/>
+        <br/>
         <button onClick={evt => this.props.save()}> Save and Use </button>
+        <button onClick={evt => this.props.removeTasks()}> Delete Routine </button>
       </div>
 
       )
@@ -128,7 +130,6 @@ class RoutineViewer extends React.Component {
     let taskList;
     if (new Date().getHours() < 15) {
       taskList = this.props.morningTasks;
-      console.log(this.props.morningTasks)
     } else {
       taskList = this.props.eveningTasks;
     }
@@ -156,13 +157,15 @@ class RoutineViewer extends React.Component {
     // Ignore inputs if they're typing in the text box.
     // https://stackoverflow.com/a/30619329/5309823
     if (document.activeElement !== ReactDOM.findDOMNode(this.refs.newTaskNameInput)) {
-      const SPACE = 32;
       switch(event.key) {
         case " ":
         case "Enter":
+        case "ArrowRight":
           this.advance();
           break;
-        // Nothing to do here.
+        case "ArrowLeft":
+          this.previous()
+          break;
         default:
           break;
       }
@@ -170,8 +173,13 @@ class RoutineViewer extends React.Component {
   }
 
   advance() {
-    let index = this.state.index;
-    this.setState({index: ++index});
+    this.setState({index: this.state.index + 1});
+  }
+
+  previous() {
+    if (this.state.index !== 0){
+      this.setState({index: this.state.index - 1});
+    }
   }
 }
 
@@ -191,6 +199,7 @@ class View extends React.Component {
     this.addNewTask = this.addNewTask.bind(this);
     this.save = this.save.bind(this);
     this.editTasks = this.editTasks.bind(this);
+    this.deleteTasks = this.deleteTasks.bind(this);
   }
   
   render() {
@@ -209,7 +218,8 @@ class View extends React.Component {
             <RoutineMaker morningTasks={this.state.morningTasks}
               eveningTasks={this.state.eveningTasks}
               addTask={this.addNewTask}
-              save={this.save}/>
+              save={this.save}
+              removeTasks={this.deleteTasks}/>
           </DocumentTitle>
         );
       }
@@ -229,7 +239,11 @@ class View extends React.Component {
   }
 
   deleteTasks() {
-    Cookie.remove('tasks')
+    Cookie.remove('tasks');
+    this.setState({
+      morningTasks: [],
+      eveningTasks: []
+    })
   }
 
   addNewTask(taskName, timeName) {
