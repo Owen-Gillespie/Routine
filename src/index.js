@@ -4,6 +4,7 @@ import './index.css';
 import registerServiceWorker from './registerServiceWorker';
 import Cookie from 'js-cookie';
 import DocumentTitle from 'react-document-title';
+import onClickOutside from "react-onclickoutside";
 
 function ListItem(props) {
   return <li>{props.value}</li>;
@@ -108,6 +109,7 @@ class RoutineMaker extends React.Component {
   }
 }
 
+
 class RoutineViewer extends React.Component {
   constructor(props) {
     super(props);
@@ -115,6 +117,7 @@ class RoutineViewer extends React.Component {
       index : 0
     }
     this.keyboardListener = this.keyboardListener.bind(this);
+    this.handleClickOutside = this.handleClickOutside.bind(this);
     this.getCurrentTask = this.getCurrentTask.bind(this);
   }
   render() {
@@ -172,6 +175,11 @@ class RoutineViewer extends React.Component {
     }
   }
 
+  handleClickOutside() {
+    this.advance();
+    console.log("Click detected")
+  }
+
   advance() {
     this.setState({index: this.state.index + 1});
   }
@@ -205,9 +213,10 @@ class View extends React.Component {
   render() {
     if (this.state.premade)
       {
+        let ClickableViewer = onClickOutside(RoutineViewer);
         return (
           <DocumentTitle title='Routine'>
-            <RoutineViewer morningTasks={this.state.morningTasks}
+            <ClickableViewer morningTasks={this.state.morningTasks}
               eveningTasks={this.state.eveningTasks}
               editTasks={this.editTasks}/>
           </DocumentTitle>
