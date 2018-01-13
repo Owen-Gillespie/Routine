@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import registerServiceWorker from './registerServiceWorker';
 import Cookie from 'js-cookie';
+import DocumentTitle from 'react-document-title';
 
 function ListItem(props) {
   return <li>{props.value}</li>;
@@ -43,10 +44,16 @@ class RoutineMaker extends React.Component {
   }
 
   render() {
+    let message;
+    if (this.props.tasks.length > 0) {
+      message = "Enter your routine and save it when you're done";
+    } else {
+      message = "To make a routine, type a task and then hit enter or the add button. Press save when you are done";
+    }
     return (
       <div className="newTask">
         <p>
-          Type up your routine and then hit save
+          {message}
         </p>
         <StringList strings = {this.props.tasks} />
         <input ref="newTaskNameInput" type="text" className="newTaskName"
@@ -151,11 +158,15 @@ class View extends React.Component {
     if (this.state.premade)
       {
         return (
-          <RoutineViewer tasks={this.state.tasks} deleteTasks={this.deleteTasks}/>
+          <DocumentTitle title='Routine'>
+            <RoutineViewer tasks={this.state.tasks} deleteTasks={this.deleteTasks}/>
+          </DocumentTitle>
         );
       } else {
         return (
-        <RoutineMaker tasks={this.state.tasks} addTask={this.addNewTask} save={this.save}/>
+          <DocumentTitle title='Routine'>
+            <RoutineMaker tasks={this.state.tasks} addTask={this.addNewTask} save={this.save}/>
+          </DocumentTitle>
         );
       }
   }
