@@ -16,17 +16,13 @@ function StringList(props) {
 
   );
   return (
-    <ul>
+    <ol>
       {listItems}
-    </ul>
+    </ol>
   );
 }
 
 class Task extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
     return (
       <div className="currentTask">
@@ -43,20 +39,96 @@ class RoutineMaker extends React.Component {
     this.state = {
       newTaskName : ""
     }
+    this.onKeyPress = this.onKeyPress.bind(this)
   }
 
   render() {
     return (
       <div className="newTask">
+        <p>
+          Type up your routine and then hit save
+        </p>
         <StringList strings = {this.props.tasks} />
         <input ref="newTaskNameInput" type="text" className="newTaskName"
                value={this.state.newTaskName}
-               onChange={evt => this.setState({newTaskName: evt.target.value})}/>
-        <button onClick={evt => this.props.addTask(this.state.newTaskName)}> Add </button>
+               onChange={evt => this.setState({newTaskName: evt.target.value})}
+               onKeyPress={this.onKeyPress}/>
+        <button onClick={evt => {this.props.addTask(this.state.newTaskName); this.setState({newTaskName: ""})}}> Add </button>
         <button onClick={evt => this.props.save()}> Save </button>
       </div>
 
       )
+  }
+  onKeyPress(e) {
+    if (e.key === "Enter")
+    {
+      this.props.addTask(this.state.newTaskName);
+      this.setState({newTaskName: ""});
+
+    }
+  }
+}
+
+class RoutineViewer extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      index : 0
+    }
+    this.keyboardListener = this.keyboardListener.bind(this);
+    this.getCurrentTask = this.getCurrentTask.bind(this);
+  }
+  render() {
+    return (
+      <div className="view">
+        <Task name={this.getCurrentTask()}/>
+        <button onClick={evt => this.props.deleteTasks()}> Delete Routine </button>
+      </div>
+    );
+  }
+  
+  getCurrentTask() {
+    if (this.props.tasks.length !== 0) {
+      if (this.state.index >= this.props.tasks.length) {
+        return "Done!"
+      } else {
+        return this.props.tasks[this.state.index];
+      }
+    } else {
+      return "Add a task to get started.";
+    }
+  }
+
+
+  // Found here: https://stackoverflow.com/a/46123962/5309823
+  componentDidMount(){
+    document.addEventListener("keydown", this.keyboardListener, false);
+  }
+
+  componentWillUnmount(){
+    document.removeEventListener("keydown", this.keyboardListener, false);
+  }
+  keyboardListener(event) {
+    // Ignore inputs if they're typing in the text box.
+    // https://stackoverflow.com/a/30619329/5309823
+    if (document.activeElement !== ReactDOM.findDOMNode(this.refs.newTaskNameInput)) {
+      const SPACE = 32;
+      switch(event.key) {
+        case " ":
+        case "Enter":
+          this.advance();
+          break;
+        // Nothing to do here.
+        default:
+          console.log(event.key)
+          break;
+      }
+    }
+  }
+
+  advance() {
+    let index = this.state.index;
+    this.setState({index: ++index});
   }
 }
 
@@ -68,59 +140,34 @@ class View extends React.Component {
       premade: (typeof Cookie.getJSON('todo') !== 'undefined')
     };
     if (this.state.premade) { // TODO: Determine why we aren't loading saved state correctly
-      this.setState({tasks: Cookie.getJSON('todo')})
+      this.state.tasks = Cookie.getJSON('todo');
     }
-    this.keyboardListener = this.keyboardListener.bind(this);
     this.addNewTask = this.addNewTask.bind(this);
     this.save = this.save.bind(this);
-    this.getCurrentTask = this.getCurrentTask.bind(this)
+    this.deleteTasks = this.deleteTasks.bind(this);
   }
   
   render() {
     if (this.state.premade)
       {
         return (
-              <div className="view">
-                <Task name={this.getCurrentTask()}/>
-              </div>
-            );
+          <RoutineViewer tasks={this.state.tasks} deleteTasks={this.deleteTasks}/>
+        );
+      } else {
+        return (
+        <RoutineMaker tasks={this.state.tasks} addTask={this.addNewTask} save={this.save}/>
+        );
       }
-    return (
-      <RoutineMaker tasks={this.state.tasks} addTask={this.addNewTask} save={this.save}/>
-    )
-    
   }
 
   save() {
     Cookie.set('todo', this.state.tasks)
-    console.log(this.state.tasks)
     this.setState({premade: true})
   }
 
-  advance() {
-    // Only advance if we have any tasks.
-    if (this.state.tasks.length !== 0) {
-      let first = this.state.tasks[0];
-      // Left rotate the array.
-      let newTasks = this.state.tasks.slice(1).concat(first);
-      this.setState({tasks: newTasks});
-    }
-  }
-
-  keyboardListener(event) {
-    // Ignore inputs if they're typing in the text box.
-    // https://stackoverflow.com/a/30619329/5309823
-    if (document.activeElement !== ReactDOM.findDOMNode(this.refs.newTaskNameInput)) {
-      const SPACE = 32;
-      switch(event.keyCode) {
-        case SPACE:
-          this.advance();
-          break;
-        // Nothing to do here.
-        default:
-          break;
-      }
-    }
+  deleteTasks() {
+    Cookie.remove('todo')
+    this.setState({premade: false, tasks: []})
   }
 
   addNewTask(taskName) {
@@ -132,25 +179,6 @@ class View extends React.Component {
     //   newTaskName: ''
     this.setState({tasks: newTasks});
   };
-
-  getCurrentTask() {
-    console.log(this.state.tasks)
-    console.log(this.state.premade)
-    if (this.state.tasks.length !== 0) {
-      return this.state.tasks[0];
-    } else {
-      return "Add a task to get started.";
-    }
-  }
-
-  // Found here: https://stackoverflow.com/a/46123962/5309823
-  componentDidMount(){
-    document.addEventListener("keydown", this.keyboardListener, false);
-  }
-
-  componentWillUnmount(){
-    document.removeEventListener("keydown", this.keyboardListener, false);
-  }
 }
 
 // ============================================================================
