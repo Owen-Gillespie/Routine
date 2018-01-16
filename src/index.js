@@ -6,6 +6,8 @@ import Cookie from 'js-cookie';
 import DocumentTitle from 'react-document-title';
 import onClickOutside from "react-onclickoutside";
 
+const EXPIRATION_LENGTH = 5000
+
 function ListItem(props) {
   return <li>{props.value}</li>;
 }
@@ -203,6 +205,7 @@ class View extends React.Component {
       let tasks = Cookie.getJSON('tasks');
       this.state.morningTasks = tasks['morningTasks'];
       this.state.eveningTasks = tasks['eveningTasks'];
+      Cookie.set('tasks', tasks, {expires: EXPIRATION_LENGTH});
     }
     this.addNewTask = this.addNewTask.bind(this);
     this.save = this.save.bind(this);
@@ -239,7 +242,7 @@ class View extends React.Component {
       "morningTasks" : this.state.morningTasks,
       "eveningTasks" : this.state.eveningTasks
     }
-    Cookie.set('tasks', dict)
+    Cookie.set('tasks', dict, {expires: EXPIRATION_LENGTH})
     this.setState({premade: true})
   }
 
