@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "js-cookie": "^2.2.0",
+    "rc-progress": "^2.2.5",
     "react": "^16.2.0",
     "react-document-title": "^2.0.3",
     "react-dom": "^16.2.0",

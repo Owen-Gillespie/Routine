@@ -5,6 +5,7 @@ import registerServiceWorker from './registerServiceWorker';
 import Cookie from 'js-cookie';
 import DocumentTitle from 'react-document-title';
 import onClickOutside from "react-onclickoutside";
+import {Line, Circle} from 'rc-progress';
 
 const EXPIRATION_LENGTH = 5000
 
@@ -12,28 +13,91 @@ function ListItem(props) {
   return <li>{props.value}</li>;
 }
 
-function StringList(props) {
-  const strings = props.strings;
-  const listItems = strings.map((string, index) =>
-    <ListItem key={index}
-              value={string} />
-
-  );
-  return (
-    <ol>
-      {listItems}
-    </ol>
-  );
+class TaskList extends React.Component {
+  render() {
+    const tasks = this.props.tasks;
+    const times = this.props.times;
+    const listItems = tasks.map(function(task, index) {
+      if (times[index] !== "0") {
+        return (<ListItem key={index}
+                value={`${task} for ${times[index]} minutes`} />);
+      } else {
+      return (<ListItem key={index}
+                value={task} />);
+      }
+    });
+    return (
+      <ol>
+        {listItems}
+      </ol>
+    );
+  }
 }
 
 class Task extends React.Component {
   render() {
+    if (this.props.time === "0") {
+      return (
+        <div className="currentTask">
+          <h2>
+            {this.props.name}
+          </h2>
+        </div>
+      )
+    } else {
+      return (
+        <div className="currentTask">
+          <h2>
+            {this.props.name}
+          </h2>
+          <Timer time={this.props.time}/>
+        </div>
+      )
+    }
+    
+  }
+}
+
+class Timer extends React.Component {
+  constructor(props){
+    super(props);
+    this.state = {
+      startTime: Date.now(),
+      progress: 0
+    };
+  }
+  render() {
+    let percent;
+    let strokeColor;
+    if (this.state.progress > 100){
+      percent = 100;
+      strokeColor = "#FF0000"
+    } else {
+      percent = this.state.progress;
+      strokeColor = "#00FF00"
+    }
     return (
-      <div className="currentTask">
-        <h2>
-          {this.props.name}
-        </h2>
-      </div>  )
+      <Line percent={percent} strokeWidth={4} strokeColor={strokeColor}/>
+    );
+  }
+
+  componentDidMount() {
+    this.timerID = setInterval(
+      () => this.tick(),
+      1000
+    );
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.timerID);
+  }
+
+  tick() {
+    let timeDeltaMs = Date.now() - this.state.startTime;
+    let timeDeltaMin = timeDeltaMs/1000/60;
+    let progress = timeDeltaMin / this.props.time * 100;
+    console.log(progress);
+    this.setState({progress: progress});
   }
 }
 
@@ -41,7 +105,8 @@ class TaskTextBox extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      newTaskName : ""
+      newTaskName : "",
+      newTimeName : ""
     }
     this.onKeyPress = this.onKeyPress.bind(this)
   }
@@ -49,18 +114,25 @@ class TaskTextBox extends React.Component {
   onKeyPress(e) {
     if (e.key === "Enter")
     {
-      this.props.addTask(this.state.newTaskName, this.props.timeName);
+      this.props.addTask(this.state.newTaskName, this.state.newTimeName, this.props.timeOfDay);
       this.setState({newTaskName: ""});
+      this.setState({newTimeName: ""})
 
     }
   }
 
   render(){
     return (
+      <div>
       <input ref="newTaskNameInput" type="text" className="newTaskName"
         value={this.state.newTaskName}
         onChange={evt => this.setState({newTaskName: evt.target.value})}
         onKeyPress={this.onKeyPress}/>
+      <input ref="newTimeNameInput" type="text" className="newTimeName"
+        value={this.state.newTimeName}
+        onChange={evt => this.setState({newTimeName: evt.target.value})}
+        onKeyPress={this.onKeyPress}/>
+      </div>
     )
   }
 
@@ -75,8 +147,8 @@ class RoutineMaker extends React.Component {
     this.addTask = this.addTask.bind(this)
   }
 
-  addTask(taskName, timeName) {
-    this.props.addTask(taskName, timeName);
+  addTask(taskName, timeName, timeOfDay) {
+    this.props.addTask(taskName, timeName, timeOfDay);
   }
 
   render() {
@@ -94,13 +166,13 @@ class RoutineMaker extends React.Component {
         <h2>
           {"Morning Tasks"}
         </h2>
-        <StringList strings = {this.props.morningTasks} />
-        <TaskTextBox addTask={this.addTask} timeName={"morning"}/>
+        <TaskList tasks = {this.props.morningTasks} times = {this.props.morningTimes} />
+        <TaskTextBox addTask={this.addTask} timeOfDay={"morning"}/>
         <h2>
           {"Evening Tasks"}
         </h2>
-        <StringList strings = {this.props.eveningTasks} />
-        <TaskTextBox addTask={this.addTask} timeName={"evening"}/>
+        <TaskList tasks = {this.props.eveningTasks} times = {this.props.eveningTimes} />
+        <TaskTextBox addTask={this.addTask} timeOfDay={"evening"}/>
         <br/>
         <br/>
         <button onClick={evt => this.props.save()}> Save and Use </button>
@@ -125,7 +197,7 @@ class RoutineViewer extends React.Component {
   render() {
     return (
       <div className="view">
-        <Task name={this.getCurrentTask()}/>
+        <Task name={this.getCurrentTask()["task"]} time={this.getCurrentTask()["time"]}/>
         <button onClick={evt => this.props.editTasks()}> Edit Routine </button>
       </div>
     );
@@ -133,16 +205,19 @@ class RoutineViewer extends React.Component {
   
   getCurrentTask() {
     let taskList;
+    let timeList;
     if (new Date().getHours() < 15) {
       taskList = this.props.morningTasks;
+      timeList = this.props.morningTimes;
     } else {
       taskList = this.props.eveningTasks;
+      timeList = this.props.eveningTimes;
     }
     if (taskList.length !== 0) {
       if (this.state.index >= taskList.length) {
-        return "Done!"
+        return {"task" : "Done!", "time": "0"};
       } else {
-        return taskList[this.state.index];
+        return {"task": taskList[this.state.index], "time": timeList[this.state.index]};
       }
     } else {
       return "Add a task to get started.";
@@ -199,12 +274,16 @@ class View extends React.Component {
     this.state = {
       morningTasks: [],
       eveningTasks: [],
+      morningTimes: [],
+      eveningTimes: [],
       premade: (typeof Cookie.getJSON('tasks') !== 'undefined')
     };
     if (this.state.premade) {
       let tasks = Cookie.getJSON('tasks');
       this.state.morningTasks = tasks['morningTasks'];
       this.state.eveningTasks = tasks['eveningTasks'];
+      this.state.morningTimes = tasks['morningTimes'];
+      this.state.eveningTimes = tasks['eveningTimes'];
       Cookie.set('tasks', tasks, {expires: EXPIRATION_LENGTH});
     }
     this.addNewTask = this.addNewTask.bind(this);
@@ -220,7 +299,9 @@ class View extends React.Component {
         return (
           <DocumentTitle title='Routine'>
             <ClickableViewer morningTasks={this.state.morningTasks}
+              morningTimes={this.state.morningTimes}
               eveningTasks={this.state.eveningTasks}
+              eveningTimes={this.state.eveningTimes}
               editTasks={this.editTasks}/>
           </DocumentTitle>
         );
@@ -228,7 +309,9 @@ class View extends React.Component {
         return (
           <DocumentTitle title='Routine'>
             <RoutineMaker morningTasks={this.state.morningTasks}
+              morningTimes={this.state.morningTimes}
               eveningTasks={this.state.eveningTasks}
+              eveningTimes={this.state.eveningTimes}
               addTask={this.addNewTask}
               save={this.save}
               removeTasks={this.deleteTasks}/>
@@ -240,7 +323,9 @@ class View extends React.Component {
   save() {
     let dict = {
       "morningTasks" : this.state.morningTasks,
-      "eveningTasks" : this.state.eveningTasks
+      "eveningTasks" : this.state.eveningTasks,
+      "morningTimes" : this.state.morningTimes,
+      "eveningTimes" : this.state.eveningTimes
     }
     Cookie.set('tasks', dict, {expires: EXPIRATION_LENGTH})
     this.setState({premade: true})
@@ -254,20 +339,30 @@ class View extends React.Component {
     Cookie.remove('tasks');
     this.setState({
       morningTasks: [],
-      eveningTasks: []
+      eveningTasks: [],
+      morningTimes: [],
+      eveningTimes: []
     })
   }
 
-  addNewTask(taskName, timeName) {
-    if (timeName === "morning")
+  addNewTask(taskName, timeName, timeOfDay) {
+    if (timeOfDay === "morning")
     {
       let newTasks = this.state.morningTasks;
       newTasks.push(taskName);
       this.setState({morningTasks: newTasks});
+
+      let newTimes = this.state.morningTimes;
+      newTimes.push(timeName);
+      this.setState({morningTimes: newTimes});
     } else {
       let newTasks = this.state.eveningTasks;
       newTasks.push(taskName);
       this.setState({eveningTasks: newTasks});
+
+      let newTimes = this.state.eveningTimes;
+      newTimes.push(timeName);
+      this.setState({eveningTimes: newTimes});
     }
     
   };
