@@ -5,6 +5,7 @@ import registerServiceWorker from './registerServiceWorker';
 import Cookie from 'js-cookie';
 import DocumentTitle from 'react-document-title';
 import onClickOutside from "react-onclickoutside";
+import ProgressBar from 'react-progressbar.js';
 
 const EXPIRATION_LENGTH = 5000
 
@@ -28,12 +29,74 @@ function StringList(props) {
 
 class Task extends React.Component {
   render() {
+    if (this.props.time === 0) {
+      return (
+        <div className="currentTask">
+          <h2>
+            {this.props.name}
+          </h2>
+        </div>
+      )
+    } else {
+      return (
+        <div className="currentTask">
+          <h2>
+            {this.props.name}
+          </h2>
+          <Timer time={this.props.time}/>
+        </div>
+      )
+    }
+    
+  }
+}
+
+class Timer extends React.Component {
+  constructor(props){
+    super(props);
+    this.state = {
+      startTime: Date.now(),
+      progress: 0
+    };
+  }
+  render() {
+    var options = {
+      strokeWidth: 2
+    };
+
+    var containerStyle = {
+        width: '200px',
+        height: '200px'
+    };
+    let Circle = ProgressBar.Circle;
     return (
-      <div className="currentTask">
-        <h2>
-          {this.props.name}
-        </h2>
-      </div>  )
+      <Circle
+        progress={this.state.progress}
+        text={'test'}
+        options={options}
+        initialAnimate={true}
+        containerStyle={containerStyle}
+        containerClassName={'.progressbar'} />
+    );
+  }
+
+  componentDidMount() {
+    this.timerID = setInterval(
+      () => this.tick(),
+      1000
+    );
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.timerID);
+  }
+
+  tick() {
+    let timeDeltaMs = Date.now() - this.state.startTime;
+    let timeDeltaMin = timeDeltaMs/1000/60;
+    let progress = timeDeltaMin / this.props.time;
+    console.log(progress);
+    this.setState({progress: progress});
   }
 }
 
@@ -133,16 +196,19 @@ class RoutineViewer extends React.Component {
   
   getCurrentTask() {
     let taskList;
+    let timeList;
     if (new Date().getHours() < 15) {
       taskList = this.props.morningTasks;
+      timeList = this.props.morningTimes;
     } else {
       taskList = this.props.eveningTasks;
+      timeList = this.props.eveningTimes;
     }
     if (taskList.length !== 0) {
       if (this.state.index >= taskList.length) {
         return "Done!"
       } else {
-        return taskList[this.state.index];
+        return {"task": taskList[this.state.index], "time": timeList[this.state.index]};
       }
     } else {
       return "Add a task to get started.";
@@ -199,12 +265,16 @@ class View extends React.Component {
     this.state = {
       morningTasks: [],
       eveningTasks: [],
+      morningTimes: [],
+      eveningTimes: [],
       premade: (typeof Cookie.getJSON('tasks') !== 'undefined')
     };
     if (this.state.premade) {
       let tasks = Cookie.getJSON('tasks');
       this.state.morningTasks = tasks['morningTasks'];
       this.state.eveningTasks = tasks['eveningTasks'];
+      this.state.morningTimes = tasks['morningTimes'];
+      this.state.eveningTimes = tasks['eveningTimes'];
       Cookie.set('tasks', tasks, {expires: EXPIRATION_LENGTH});
     }
     this.addNewTask = this.addNewTask.bind(this);
@@ -240,7 +310,9 @@ class View extends React.Component {
   save() {
     let dict = {
       "morningTasks" : this.state.morningTasks,
-      "eveningTasks" : this.state.eveningTasks
+      "eveningTasks" : this.state.eveningTasks,
+      "morningTimes" : this.state.morningTimes,
+      "eveningTimes" : this.state.eveningTasks
     }
     Cookie.set('tasks', dict, {expires: EXPIRATION_LENGTH})
     this.setState({premade: true})

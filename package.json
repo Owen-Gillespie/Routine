@@ -8,6 +8,7 @@
     "react-document-title": "^2.0.3",
     "react-dom": "^16.2.0",
     "react-onclickoutside": "^6.7.0",
+    "react-progressbar.js": "^0.2.0",
     "react-scripts": "1.0.17"
   },
   "scripts": {
